@@ -8,12 +8,23 @@ import logging
 from datetime import datetime, date, time, timedelta
 import pprint
 import collections
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 logging.basicConfig(format='%(asctime)s %(levelname)s - %(name)s %(message)s',
-                   datefmt='%b %d %H:%M:%S', stream=sys.stdout, level=logging.DEBUG)
+                    datefmt='%b %d %H:%M:%S', stream=sys.stdout, level=logging.DEBUG)
 
 logger = logging.getLogger('api')
+
+sqla_engine = create_engine(
+    	'postgresql://{}:{}@localhost/{}'.format(
+    		os.environ.get('ECARTE_DBUSER'),
+    		os.environ.get('ECARTE_DBPWD'),
+    		os.environ.get('ECARTE_DB', 'ecarte')))
+# This could be probably hidden inside DBMiddleware, but alembic may need it
+DBSession = scoped_session(sessionmaker(bind=sqla_engine))
+
 
 # Usual 'datetime is not JSON serializable' shit
 def _custom_serialize(_self, media):
@@ -29,6 +40,7 @@ def _custom_serialize(_self, media):
 # Why provide your own handler when you can monkey patch? ;)
 falcon.media.JSONHandler.serialize = _custom_serialize
 
+
 class AuthMiddleware(object):
 	def process_request(self, req, resp):
 		if req.path == '/api/login':
@@ -43,11 +55,21 @@ class AuthMiddleware(object):
 		logger.debug('** payload:'+pprint.pformat(payload))
 
 
+class DBMiddleware(object):
+	def process_resource(self, req, resp, resource, params):
+		resource.session = DBSession()
+
+	def process_response(self, req, resp, resource, req_succeeded):
+		if hasattr(resource, 'session'):
+			if not req_succeeded:
+				resource.session.rollback()
+			Session.remove()
+
+
 class FooResource(object):
 	def on_get(self, req, resp):
 		logger.debug('foo')
 		resp.media = {'success': True, 'now': datetime.now()}
-		#resp.status = falcon.HTTP_200
 
 	def on_post(self, req, resp):
 		logger.debug('post data:' + pprint.pformat(req.params))
@@ -62,9 +84,10 @@ class LoginResource(object):
 	}
 
 	def on_post(self, req, resp):
-		logger.info('/api/login | post data:' + pprint.pformat(req.params))
-		# TODO: return JWT token
+		from .models import User
+		#logger.info('/api/login | post data:' + pprint.pformat(req.params))
 		usernm, pwd = req.params.get('username', ''), req.params.get('password', '')
+		self.session.query(User).filter_by()
 		if (usernm in LoginResource._credentials and pwd == LoginResource._credentials[usernm]):
 			payload = {
 				'user_id': 'johny.test',
@@ -82,8 +105,11 @@ class LoginResource(object):
 
 cors = CORS(allow_origins_list=['http://localhost:8080', 'http://localhost:8081'])
 
-app = falcon.API(middleware=[cors.middleware, AuthMiddleware()])
+app = falcon.API(middleware=[cors.middleware,
+                             DBMiddleware(),
+	                         AuthMiddleware()])
 # Make POST params available in req.params
 app.req_options.auto_parse_form_urlencoded = True
+
 app.add_route('/api/foo', FooResource())
 app.add_route('/api/login', LoginResource())
