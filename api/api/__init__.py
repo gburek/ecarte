@@ -63,7 +63,7 @@ class DBMiddleware(object):
 		if hasattr(resource, 'session'):
 			if not req_succeeded:
 				resource.session.rollback()
-			Session.remove()
+			DBSession.remove()
 
 
 class FooResource(object):
@@ -79,25 +79,22 @@ class FooResource(object):
 APP_JWT_SECRET = 'n4 POHYB3l 5KURwYsYnO]\/['
 
 class LoginResource(object):
-	_credentials = {
-		'johny.test': 'dupa'
-	}
-
 	def on_post(self, req, resp):
-		from .models import User
+		from .admin import AccountSvc
+		from .models import Account, Role
 		#logger.info('/api/login | post data:' + pprint.pformat(req.params))
 		usernm, pwd = req.params.get('username', ''), req.params.get('password', '')
-		self.session.query(User).filter_by()
-		if (usernm in LoginResource._credentials and pwd == LoginResource._credentials[usernm]):
+		acc = AccountSvc(DBSession).authentificate(usernm, pwd)
+		if acc is not None:
 			payload = {
-				'user_id': 'johny.test',
+				'user_id': acc.id,
 				'exp': datetime.utcnow() + timedelta(minutes=60),
 				'extra': 'Danielle is a slut',
 			}
 			token = jwt.encode(payload, APP_JWT_SECRET, 'HS256')
 			resp.media = {'authToken': token.decode('utf-8')}
 		else:
-			resp.media = {'error': 'User name or password do onot match'}
+			resp.media = {'error': 'User name or password do not match'}
 
 
 
