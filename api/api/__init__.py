@@ -17,16 +17,18 @@ logging.basicConfig(format='%(asctime)s %(levelname)s - %(name)s %(message)s',
 
 logger = logging.getLogger('api')
 
+# TODO: using in-memmory sqlite for unit tests would speed things up
+# This is public so unit tests can access it for DB schema drop/create
 sqla_engine = create_engine(
     	'postgresql://{}:{}@localhost/{}'.format(
     		os.environ.get('ECARTE_DBUSER'),
     		os.environ.get('ECARTE_DBPWD'),
     		os.environ.get('ECARTE_DB', 'ecarte')))
-# This could be probably hidden inside DBMiddleware, but alembic may need it
+# Unit tests need this. Alembic probably too.
 DBSession = scoped_session(sessionmaker(bind=sqla_engine))
 
 
-# Usual 'datetime is not JSON serializable' shit
+# Usual 'datetime is not JSON serializable'...
 def _custom_serialize(_self, media):
 	class ExtEncoder(json.JSONEncoder):
 		def default(self, obj):
@@ -43,16 +45,25 @@ falcon.media.JSONHandler.serialize = _custom_serialize
 
 class AuthMiddleware(object):
 	def process_request(self, req, resp):
-		if req.path == '/api/login':
+		# if req.method == 'OPTIONS':
+		# 	resp.append_header('Access-Control-Allow-Credentials', 'true')
+		# 	resp.append_header('Access-Control-Allow-Headers', 'Authorization')
+		# 	return
+		# TODO: Need an app level set of exempt routes
+		if req.path == '/api/login' or req.method == 'OPTIONS':
 			return
+		logger.debug('** method: %s', req.method)
 		token = req.get_header('Authorization')
 		if not token:
 			raise falcon.HTTPUnauthorized(
 				title='401 Unauthorized',
 				description='Missing Authorization Header',
-				challenges=None)
+				headers= [('Access-Control-Allow-Origin', 'http://localhost:8081'),
+				          ('WWW-Authenticate', 'JWT')])
+		# TODO: Tgis may be junk
 		payload = jwt.decode(token, key=APP_JWT_SECRET, algoriths=['HS256'])
 		logger.debug('** payload:'+pprint.pformat(payload))
+		# Have payload. Now what? Put User object in the context?
 
 
 class DBMiddleware(object):
@@ -76,7 +87,7 @@ class FooResource(object):
 		resp.media = {'success': True}
 
 
-APP_JWT_SECRET = 'n4 POHYB3l 5KURwYsYnO]\/['
+__APP_JWT_SECRET = 'n4 POHYB3l 5KURwYsYnO]\/['
 
 class LoginResource(object):
 	def on_post(self, req, resp):
@@ -91,7 +102,7 @@ class LoginResource(object):
 				'exp': datetime.utcnow() + timedelta(minutes=60),
 				'extra': 'Danielle is a slut',
 			}
-			token = jwt.encode(payload, APP_JWT_SECRET, 'HS256')
+			token = jwt.encode(payload, __APP_JWT_SECRET, 'HS256')
 			resp.media = {'authToken': token.decode('utf-8')}
 		else:
 			resp.media = {'error': 'User name or password do not match'}
@@ -100,7 +111,8 @@ class LoginResource(object):
 
 #########################
 
-cors = CORS(allow_origins_list=['http://localhost:8080', 'http://localhost:8081'])
+cors = CORS(allow_origins_list=['http://localhost:8080', 'http://localhost:8081'],
+	        allow_all_headers=True)
 
 app = falcon.API(middleware=[cors.middleware,
                              DBMiddleware(),
@@ -108,5 +120,6 @@ app = falcon.API(middleware=[cors.middleware,
 # Make POST params available in req.params
 app.req_options.auto_parse_form_urlencoded = True
 
+# Could the routes be added in bulk? Check the API docs
 app.add_route('/api/foo', FooResource())
 app.add_route('/api/login', LoginResource())

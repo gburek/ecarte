@@ -1,0 +1,2 @@
+1. /login - use DB to auth - completed
+2. Move stuff out of api/__init__.py

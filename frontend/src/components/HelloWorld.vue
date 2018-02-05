@@ -84,13 +84,29 @@
 </template>
 
 <script>
+import Vue from 'vue'
+
 export default {
-  name: 'HelloWorld',
-  data () {
-    return {
-      msg: 'Welcome to Your Vue.js App'
-    }
-  }
+	name: 'HelloWorld',
+
+	created() {
+		Vue.$http.get('/api/foo').then(response => {
+			console.log('*** response:', response)
+		})
+		.catch(error => {
+			if (error.status == 401) {
+				console.log('** Need to log in **')
+			}
+			else
+				console.error('Error when calling API')
+		})
+	},
+
+	data () {
+		return {
+			msg: 'Welcome to Your Vue.js App'
+		}
+	}
 }
 </script>
 
