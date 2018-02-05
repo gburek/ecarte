@@ -21,7 +21,7 @@ logger = logging.getLogger('api')
 # This is public so unit tests can access it for DB schema drop/create
 sqla_engine = create_engine(
     	'postgresql://{}:{}@localhost/{}'.format(
-    		os.environ.get('ECARTE_DBUSER'),
+    		os.environ.get('ECARTE_DBUSER', 'ecarte'),
     		os.environ.get('ECARTE_DBPWD'),
     		os.environ.get('ECARTE_DB', 'ecarte')))
 # Unit tests need this. Alembic probably too.
