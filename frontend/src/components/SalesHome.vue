@@ -3,12 +3,16 @@
         <transition name="authbox-fade">
             <div id="auth-box" v-show="show_auth_box">
                 <h2>Please log in</h2>
-                <form autofill="no">
-                    <div><input type="text" ref="username" placeholder="Username or email" v-model="usernm"></div>
-                    <div><input type="password" ref="password" placeholder="Password" v-model="pwd"></div>
+                <form autofill="no" @keydown.enter="login" @keydown.esc="hideLoginBox">
+                    <div class="error-msg" v-if="loginErrorMsg">{{ loginErrorMsg }}</div>
+                    <div><input type="text" ref="username" placeholder="Username or email" v-model="usernm"
+                                ></div>
+                    <div><input type="password" ref="password" placeholder="Password" v-model="pwd"
+                                ></div>
                     <div>
                         <button class="waves-effect waves-light btn" @click="login">Let me in <i class="material-icons right" v-bind:class="{ working: ajaxInProgress }">send</i></button>
                     </div>
+                    <i class="material-icons close" @click="hideLoginBox">clear</i>
                 </form>
             </div>
         </transition>
@@ -19,7 +23,7 @@
             <div id="login-links">
                 Restaurant owners:
                 <a href="#" v-if="logged_in">Manage menu</a>
-                <a href="#" v-if="!logged_in" @click="show_auth_box=true">Log in</a> |
+                <a href="#" v-if="!logged_in" @click="showLoginBox">Log in</a> |
                 <a href="#" v-if="logged_in" @click="logout">Log out</a>
                 <a href="#" v-if="!logged_in">Sign up</a>
             </div>
@@ -61,26 +65,42 @@ export default {
             logged_in: false,
 			show_auth_box: false,
             usernm: '',
-            pwd: ''
+            pwd: '',
+            loginErrorMsg: '',
 		}
 	},
 
     methods: {
+        showLoginBox() {
+            this.show_auth_box = true
+            setTimeout(() => { this.$refs.username.select() })
+        },
+
+        hideLoginBox() {
+            this.show_auth_box = false
+        },
+
         login() {
             if (this.ajaxInProgress) // Ignore multiple clicks
                 return
+            console.log('api/auth...')
             this.ajaxInProgress = true
+            this.loginErrorMsg = ''
             Vue.$http.post(
                 '/api/login',
                 {
                     username: this.usernm,
                     password: this.pwd
                 }).then(data => {
-                    console.log('/api/login data:', data)
-                    localStorage.apiAuthToken = data.data.authToken
-                    this.logged_in = true
-                    this.show_auth_box = false
                     this.ajaxInProgress = false
+                    console.log('/api/login data:', data)
+                    if (data.data.error)
+                        this.loginErrorMsg = data.data.error
+                    else {
+                        localStorage.apiAuthToken = data.data.authToken
+                        this.logged_in = true
+                        this.show_auth_box = false
+                    }
                 })
         },
 
@@ -154,10 +174,9 @@ export default {
         top: 180px;
         left: 50%;
         width: 400px;
-        height: 260px;
         margin-left: -200px;
         display: inline-block;
-        padding: 15px 20px;
+        padding: 5px 20px 20px 20px;
         background-color: black;
         opacity: 0.85;
         z-index: 500;
@@ -191,6 +210,24 @@ export default {
             color: #aaa;
         }
 
+        i.close {
+            color: white;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            cursor: pointer;
+
+            &:hover {
+                text-shadow: 0 0 8px yellow;
+            }
+        }
+    }
+
+    .error-msg {
+        font-face: Arial;
+        font-size: 18px;
+        color: #ed6969;
+        margin-bottom: 15px;
     }
 
     .authbox-fade-enter-active, .authbox-fade-leave-active {
