@@ -114,7 +114,8 @@ class LoginResource(object):
 			}
 			global APP_JWT_SECRET
 			token = jwt.encode(payload, APP_JWT_SECRET, 'HS256')
-			resp.media = {'authToken': token.decode('utf-8')}
+			resp.media = payload
+			resp.media['authToken'] = token
 		else:
 			resp.media = {'error': 'User name or password do not match'}
 
