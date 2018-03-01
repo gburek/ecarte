@@ -3,6 +3,7 @@ import json
 import falcon
 import jwt
 import six
+import inspect
 from falcon_cors import CORS
 import logging
 from datetime import datetime, date, time, timedelta
@@ -43,27 +44,31 @@ def _custom_serialize(_self, media):
 falcon.media.JSONHandler.serialize = _custom_serialize
 
 
-class AuthMiddleware(object):
-	def process_request(self, req, resp):
-		# if req.method == 'OPTIONS':
-		# 	resp.append_header('Access-Control-Allow-Credentials', 'true')
-		# 	resp.append_header('Access-Control-Allow-Headers', 'Authorization')
-		# 	return
-		# TODO: Need an app level set of exempt routes
-		if req.path == '/api/login' or req.method == 'OPTIONS':
-			return
-		logger.debug('** method: %s', req.method)
-		token = req.get_header('Authorization')
-		if not token:
-			raise falcon.HTTPUnauthorized(
+# It would be more elegant to wrap at the class level but too difficult ATM
+def needs_auth(meth):
+	def boo():
+		raise falcon.HTTPUnauthorized(
 				title='401 Unauthorized',
-				description='Missing Authorization Header',
 				headers= [('Access-Control-Allow-Origin', 'http://localhost:8081'),
 				          ('WWW-Authenticate', 'JWT')])
-		# TODO: Tgis may be junk
-		payload = jwt.decode(token, key=APP_JWT_SECRET, algoriths=['HS256'])
-		logger.debug('** payload:'+pprint.pformat(payload))
-		# Have payload. Now what? Put User object in the context?
+
+	def wrapped(self, req, resp):
+		token = req.get_header('Authorization')
+		if not token:
+			boo()			
+		# TODO: token may be junk
+		try:
+			payload = jwt.decode(token, key=APP_JWT_SECRET, algoriths=['HS256'])
+			logger.debug('** payload:'+pprint.pformat(payload))
+			self.user_auth_token = payload
+			meth(self, req, resp)
+		except jwt.DecodeError as ex:
+			logger.error('Junk JWT received')
+			boo()
+		except jwt.ExpiredSignatureError as ex:
+			logger.info('JWT signature expired. Client needs to re-login')
+			boo()
+	return wrapped
 
 
 class DBMiddleware(object):
@@ -78,31 +83,37 @@ class DBMiddleware(object):
 
 
 class FooResource(object):
+	@needs_auth
 	def on_get(self, req, resp):
 		logger.debug('foo')
 		resp.media = {'success': True, 'now': datetime.now()}
 
+	@needs_auth
 	def on_post(self, req, resp):
 		logger.debug('post data:' + pprint.pformat(req.params))
 		resp.media = {'success': True}
 
 
-__APP_JWT_SECRET = 'n4 POHYB3l 5KURwYsYnO]\/['
+APP_JWT_SECRET = 'n4 POHYB3l 5KURwYsYnO]\/['
 
 class LoginResource(object):
 	def on_post(self, req, resp):
 		from .admin import AccountSvc
 		from .models import Account, Role
-		#logger.info('/api/login | post data:' + pprint.pformat(req.params))
-		usernm, pwd = req.params.get('username', ''), req.params.get('password', '')
+		logger.info('/api/login | post data:' + pprint.pformat(req.media))
+		usernm, pwd = req.media['username'], req.media['password']
 		acc = AccountSvc(DBSession).authentificate(usernm, pwd)
 		if acc is not None:
 			payload = {
-				'user_id': acc.id,
-				'exp': datetime.utcnow() + timedelta(minutes=60),
-				'extra': 'Danielle is a slut',
+				'userid': acc.id,
+				'username': acc.username,
+				'fullname': acc.fullName,
+				'exp': datetime.utcnow() + timedelta(minutes=60*24*3), # TODO: make it a long time after testing expiry
+				'roles': [r.name for r in acc.roles],
+				'is_admin': acc.is_admin
 			}
-			token = jwt.encode(payload, __APP_JWT_SECRET, 'HS256')
+			global APP_JWT_SECRET
+			token = jwt.encode(payload, APP_JWT_SECRET, 'HS256')
 			resp.media = {'authToken': token.decode('utf-8')}
 		else:
 			resp.media = {'error': 'User name or password do not match'}
@@ -112,11 +123,11 @@ class LoginResource(object):
 #########################
 
 cors = CORS(allow_origins_list=['http://localhost:8080', 'http://localhost:8081'],
-	        allow_all_headers=True)
+	        allow_all_headers=True, allow_all_methods=True)
 
 app = falcon.API(middleware=[cors.middleware,
-                             DBMiddleware(),
-	                         AuthMiddleware()])
+                             DBMiddleware(),])
+	                         #AuthMiddleware()])
 # Make POST params available in req.params
 app.req_options.auto_parse_form_urlencoded = True
 

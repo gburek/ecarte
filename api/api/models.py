@@ -52,20 +52,3 @@ class Account(DBModel):
 					self._is_admin = True
 		return self._is_admin
 		
-
-
-# if __name__ == '__main__':
-# 	from sqlalchemy import create_engine
-# 	from sqlalchemy.orm import sessionmaker
-# 	engine = create_engine('postgresql://gburek:dupa@localhost/ecarte')
-# 	DBModel.metadata.drop_all(engine)
-# 	DBModel.metadata.create_all(engine)
-# 	session = sessionmaker(bind=engine)()
-# 	r1 , r2 = Role(name='admin'), Role(name='pikus')
-# 	session.add(r1)
-# 	session.add(r2)
-# 	a = User(username='gburek', fullName='Greg Burek', email='gru@mailinator.com')
-# 	a.set_password('dupa')
-# 	a.roles.extend((r1, r2))
-# 	session.add(a)
-# 	session.commit()

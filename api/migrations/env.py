@@ -15,7 +15,8 @@ fileConfig(config.config_file_name)
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = None
+from api.models import DBModel
+target_metadata = DBModel.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -52,10 +53,13 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix='sqlalchemy.',
-        poolclass=pool.NullPool)
+    #connectable = engine_from_config(
+    #    config.get_section(config.config_ini_section),
+    #    prefix='sqlalchemy.',
+    #    poolclass=pool.NullPool)
+    import os.path as opath
+
+    from api import sqla_engine as connectable
 
     with connectable.connect() as connection:
         context.configure(
