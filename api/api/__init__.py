@@ -107,6 +107,7 @@ class LoginResource(object):
 			payload = {
 				'userid': acc.id,
 				'username': acc.username,
+				'email': acc.email,
 				'fullname': acc.fullName,
 				'exp': datetime.utcnow() + timedelta(minutes=60*24*3), # TODO: make it a long time after testing expiry
 				'roles': [r.name for r in acc.roles],

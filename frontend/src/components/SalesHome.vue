@@ -30,7 +30,7 @@
         </div>
     
         <transition name="expand-admin">
-            <Admin :visible="show_admin"></Admin>
+            <Admin :visible="show_admin" :userObj="userObj"></Admin>
         </transition>
     </div>
 
@@ -41,6 +41,7 @@
 <script>
 import Vue from 'vue'
 import Admin from './Admin.vue'
+import * as Ecarte from '../App.vue'
 
 export default {
 	name: 'SalesHome',
@@ -50,14 +51,19 @@ export default {
     },
 
 	mounted() {
+        Vue.$eventBus.$on(Ecarte.AJAX_END, () => {
+            this.ajaxInProgress = false
+        })
         let headers = {}
         if (localStorage.authToken) {
             headers['Authorization'] = localStorage.authToken
         }
-		Vue.$http.get('/api/foo', {headers: headers}).then(response => {
-			this.logged_in = this.show_admin = true
-		})
-		.catch(error => {
+		Vue.$http.get('/api/foo', {headers: headers})
+           .then(response => {
+	           this.logged_in = this.show_admin = true
+		   })
+		   .catch(error => {
+                console.log('***** error:', error)
 			if (error.response.status == 401) {
 				console.log('** Need to log in **')
                 this.logged_in = false
@@ -77,6 +83,7 @@ export default {
             pwd: '',
             loginErrorMsg: '',
             show_admin: false,
+            userObj: null,
 		}
 	},
 
@@ -102,7 +109,6 @@ export default {
                     username: this.usernm,
                     password: this.pwd
                 }).then(data => {
-                    this.ajaxInProgress = false
                     console.log('/api/login data:', data)
                     // TODO: Add a shake animation if incorrect
                     if (data.data.error)
@@ -111,6 +117,14 @@ export default {
                         localStorage.authToken = data.data.authToken
                         this.logged_in = true
                         this.show_auth_box = false
+                        // AccountAdmin component will edit this, so would have to pass
+                        // a prop two levels down. Just don't feel like doing that
+                        App.userObj = {
+                            username: data.data.username,
+                            email: data.data.email,
+                            fullName: data.data.fulname
+                        }
+                        // Need a delay due to hide login box animation
                         setTimeout(() => {
                             this.show_admin =true
                         }, 750)
@@ -120,7 +134,7 @@ export default {
         },
 
         logout() {
-            localStorage.removeItem('apiAuthToken')
+            localStorage.removeItem('authToken')
             this.logged_in = this.show_admin = false
         }
     }

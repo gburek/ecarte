@@ -24,9 +24,13 @@
 	export default {
 		name: 'AccountAdmin',
 
+		mounted() {
+			this.userObj = App.userObj
+		},
+
 		data() {
 			return {
-
+				userObj : {},
 			}
 		}
 	}

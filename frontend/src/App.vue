@@ -5,6 +5,8 @@
 </template>
 
 <script>
+    export const AJAX_END = 'AjaxEnd'
+
     export default {
         name: 'App'
     }

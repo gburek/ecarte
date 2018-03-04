@@ -9,6 +9,7 @@
 	    </ul>
 
 	    <div class="panels">
+	    	<!-- TODO: pass userObj to AccountAdmin -->
 	    	<div v-for="panel of panels" v-show="panel.id == selectedPanel.id" :is="panel.component"></div>
 	    	<br>
 	    </div>
@@ -35,7 +36,9 @@
 				type: Boolean,
 				default: false,
 			},
-
+			userObj: {
+				type: Object,
+			}
 		},
 
 		data() {
