@@ -22,36 +22,45 @@
 
             <div id="login-links">
                 Restaurant owners:
-                <a href="#" v-if="logged_in">Manage menu</a>
+                <a href="#" v-if="logged_in" @click="show_admin=!show_admin">Manage menu</a>
                 <a href="#" v-if="!logged_in" @click="showLoginBox">Log in</a> |
                 <a href="#" v-if="logged_in" @click="logout">Log out</a>
                 <a href="#" v-if="!logged_in">Sign up</a>
             </div>
         </div>
+    
+        <transition name="expand-admin">
+            <Admin :visible="show_admin"></Admin>
+        </transition>
     </div>
+
+    
+
 </template>
 
 <script>
 import Vue from 'vue'
+import Admin from './Admin.vue'
 
 export default {
 	name: 'SalesHome',
 
+    components: {
+        Admin,
+    },
+
 	mounted() {
         let headers = {}
-        if (localStorage.apiAuthToken) {
-            headers['Authorization'] = localStorage.apiAuthToken
+        if (localStorage.authToken) {
+            headers['Authorization'] = localStorage.authToken
         }
 		Vue.$http.get('/api/foo', {headers: headers}).then(response => {
-			this.logged_in = true
+			this.logged_in = this.show_admin = true
 		})
 		.catch(error => {
 			if (error.response.status == 401) {
 				console.log('** Need to log in **')
-                /*setTimeout(() => { // Vue is not ready yet ATM...
-                    console.log('refs:', this.$refs)
-                    this.$refs.username.focus();
-                });*/
+                this.logged_in = false
 			}
 			else {
                 console.error('Error when calling API, ', error.response)
@@ -59,7 +68,7 @@ export default {
 		})
 	},
 
-	data () {
+	data() {
 		return {
             ajaxInProgress: false,
             logged_in: false,
@@ -67,6 +76,7 @@ export default {
             usernm: '',
             pwd: '',
             loginErrorMsg: '',
+            show_admin: false,
 		}
 	},
 
@@ -94,19 +104,24 @@ export default {
                 }).then(data => {
                     this.ajaxInProgress = false
                     console.log('/api/login data:', data)
+                    // TODO: Add a shake animation if incorrect
                     if (data.data.error)
                         this.loginErrorMsg = data.data.error
                     else {
-                        localStorage.apiAuthToken = data.data.authToken
+                        localStorage.authToken = data.data.authToken
                         this.logged_in = true
                         this.show_auth_box = false
+                        setTimeout(() => {
+                            this.show_admin =true
+                        }, 750)
+                        
                     }
                 })
         },
 
         logout() {
             localStorage.removeItem('apiAuthToken')
-            this.logged_in = false
+            this.logged_in = this.show_admin = false
         }
     }
 }
@@ -114,7 +129,7 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang="scss" scoped>
-    @import url('https://fonts.googleapis.com/css?family=Oswald:200,300,400,500,600');
+    @import url('https://fonts.googleapis.com/css?family=Oswald:200,300,400,500,600');    
 
     #main {
         position: relative;
@@ -242,5 +257,17 @@ export default {
     button i.working {
         transition: 5s;
         transform:rotate(720deg);
+    }
+
+    .expand-admin-enter-active, .expand-admin-leave-active {
+        transition: max-height 1.5s ease-out;
+    }
+
+    .expand-admin-enter, .expand-admin-leave-to {
+        max-height: 0;
+    }
+
+    .expand-admin-enter-to, .expand-admin-leave {
+        max-height: 5000px;
     }
 </style>

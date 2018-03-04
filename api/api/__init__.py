@@ -113,9 +113,10 @@ class LoginResource(object):
 				'is_admin': acc.is_admin
 			}
 			global APP_JWT_SECRET
-			token = jwt.encode(payload, APP_JWT_SECRET, 'HS256')
+			token = jwt.encode(payload, APP_JWT_SECRET, 'HS256').decode('utf-8')
+			logger.debug('authToken: %s', token)
+			payload['authToken'] = token
 			resp.media = payload
-			resp.media['authToken'] = token
 		else:
 			resp.media = {'error': 'User name or password do not match'}
 
