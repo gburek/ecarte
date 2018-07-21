@@ -71,6 +71,20 @@ def needs_auth(meth):
 	return wrapped
 
 
+class SimulatedSlowServerMiddleware(object):
+	def process_response(self, req, resp, resource, req_succeeded):
+		if os.environ.get('ECARTE_SLOW'):
+			import random
+			from time import sleep
+			try:
+				mind = float(os.environ.get('ECARTE_SLOW_MIN', '1.0'))
+				maxd = float(os.environ.get('ECARTE_SLOW_MAX', '2.0'))
+				delay = random.uniform(mind, maxd)
+				logger.info('Simulating slow server - sleeping for %.3f secs', delay)
+				sleep(delay)
+			except ValueError:
+				logger.warn('Junk value of ECARTE_MIN|MAX_DELAY')
+
 class DBMiddleware(object):
 	def process_resource(self, req, resp, resource, params):
 		resource.session = DBSession()
@@ -140,7 +154,7 @@ cors = CORS(allow_origins_list=['http://localhost:8080', 'http://localhost:8081'
 	        allow_all_headers=True, allow_all_methods=True)
 
 app = falcon.API(middleware=[cors.middleware,
-                             DBMiddleware()])
+                             DBMiddleware(), SimulatedSlowServerMiddleware()])
 	                         #AuthMiddleware()])
 # Make POST params available in req.params
 app.req_options.auto_parse_form_urlencoded = True
