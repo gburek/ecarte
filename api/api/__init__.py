@@ -96,10 +96,12 @@ class FooResource(object):
 
 APP_JWT_SECRET = 'n4 POHYB3l 5KURwYsYnO]\/['
 
+from .admin import AccountSvc
+from .models import Account, Role
+
+
 class LoginResource(object):
 	def on_post(self, req, resp):
-		from .admin import AccountSvc
-		from .models import Account, Role
 		logger.info('/api/login | post data:' + pprint.pformat(req.media))
 		usernm, pwd = req.media['username'], req.media['password']
 		acc = AccountSvc(DBSession).authentificate(usernm, pwd)
@@ -122,6 +124,15 @@ class LoginResource(object):
 			resp.media = {'error': 'User name or password do not match'}
 
 
+class AccountResource(object):
+	def on_patch(self, req, resp, accountId):
+		errors = AccountSvc(DBSession).update(
+			accountId,
+			email=req.media['email'],
+			password1=req.media['password1'],
+			password2=req.media['password2'])
+		resp.media = {'errors': errors} if errors else {'success': True}
+		
 
 #########################
 
@@ -129,7 +140,7 @@ cors = CORS(allow_origins_list=['http://localhost:8080', 'http://localhost:8081'
 	        allow_all_headers=True, allow_all_methods=True)
 
 app = falcon.API(middleware=[cors.middleware,
-                             DBMiddleware(),])
+                             DBMiddleware()])
 	                         #AuthMiddleware()])
 # Make POST params available in req.params
 app.req_options.auto_parse_form_urlencoded = True
@@ -137,3 +148,4 @@ app.req_options.auto_parse_form_urlencoded = True
 # Could the routes be added in bulk? Check the API docs
 app.add_route('/api/foo', FooResource())
 app.add_route('/api/login', LoginResource())
+app.add_route('/api/account/{accountId:int}', AccountResource())

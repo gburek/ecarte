@@ -6,6 +6,10 @@ from passlib.hash import sha256_crypt
 
 DBModel = declarative_base()
 
+class NotFoundError(Exception):
+	pass
+
+	
 class AuthType(enum.Enum):
 	local = 'local'
 	facebook = 'facebook'
@@ -51,4 +55,11 @@ class Account(DBModel):
 				if r.id == 'admin':
 					self._is_admin = True
 		return self._is_admin
-		
+
+
+class Business(DBModel):
+	__tablename__ = 'business'
+
+	id = Column(Integer, primary_key=True)
+	name = Column(String, index=True)
+	

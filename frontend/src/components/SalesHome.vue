@@ -120,6 +120,7 @@ export default {
                         // AccountAdmin component will edit this, so would have to pass
                         // a prop two levels down. Just don't feel like doing that
                         App.userObj = {
+                            id: data.data.userid,
                             username: data.data.username,
                             email: data.data.email,
                             fullName: data.data.fulname

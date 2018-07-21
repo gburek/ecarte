@@ -1,36 +1,81 @@
 <template>
-	<div>
+	<div @keydown.enter="update">
 		<fieldset>
 			<legend>User Information</legend>
-			<label >Email
-				<i class="material-icons">mail outline</i><input class="error" type="text" placeholder="Email" name="email" autocomplete="off">
-				<span class="error-msg">This e-mail is in use!</span>
+			<div class="top-message" :class="{error: haveErrors}" v-html="topMessage"></div>
+			<label :class="{error: response.errors.email}">Email
+				<i class="material-icons">mail outline</i>
+				<input class="error" type="text" placeholder="Email" name="email" autocomplete="off" v-model="userObj.email">
+				<span class="error-msg" v-if="response.errors.email">{{ response.errors.email }}</span>
 			</label>
 			<input style="display:none;">
-			<label>Password
-				<i class="material-icons">lock outline</i><input type="password" placeholder="Password" name="password" autocomplete="off">
+			<label :class="{error: response.errors.password1}">Password
+				<i class="material-icons">lock outline</i>
+				<input type="password" placeholder="Password" name="password" autocomplete="off" v-model="password1">
+				<span class="error-msg" v-if="response.errors.password1">{{ response.errors.password1 }}</span>
 			</label>
-			<label>Repeat Password
-				<i class="material-icons">lock outline</i><input type="password" placeholder="Password - again" name="password1" autocomplete="off">
+			<label :class="{error: response.errors.password2}">Repeat Password
+				<i class="material-icons">lock outline</i>
+				<input type="password" placeholder="Password - again" name="password1" autocomplete="off" v-model="password2">
+				<span class="error-msg" v-if="response.errors.password2">{{ response.errors.password2 }}</span>
 			</label>
 			<div>
-				<button class="waves-effect waves-light btn">Update</button>
+				<!-- TODO: create a button with throbber component -->
+				<button class="waves-effect waves-light btn" @click="update">Update</button>
 			</div>
 		</fieldset>
 	</div>
 </template>
 
 <script>
+	import Vue from 'vue'
+	import * as Ecarte from '../App.vue'
+
 	export default {
 		name: 'AccountAdmin',
 
 		mounted() {
-			this.userObj = App.userObj
+			this.userObj = App.userObj || {}
 		},
 
 		data() {
 			return {
 				userObj : {},
+				password1: '',
+				password2: '',
+				response: { errors: {} },
+				topMessage: '',
+			}
+		},
+
+		methods: {
+			update() {
+				//console.log(`PATCH /api/account/${this.userObj.id}`)
+				this.topMessage = ''
+				Vue.$http.patch(
+					`/api/account/${this.userObj.id}`,
+					{ 
+						email: this.userObj.email,
+					  	password1: this.password1,
+					  	password2: this.password2 
+					}
+				).then( (response) => {
+					if (response.data.errors) {
+						this.response.errors = response.data.errors
+						this.topMessage = Ecarte.MSG_VALIDATION_ERROR
+					}
+					else {
+						this.response.errors = {}
+						this.password1 = this.password2 = ''
+						this.topMessage = Ecarte.MSG_UPDATE_SUCCESS
+					}
+				});
+			}
+		},
+
+		computed: {
+			haveErrors() {
+				return this.response.errors && Object.keys(this.response.errors).length>0
 			}
 		}
 	}
@@ -38,6 +83,15 @@
 
 <style lang="scss" scoped>
 	/* This all must go to the unscoped, global style */
+
+	.top-message {
+		margin-bottom: 10px;
+		color: #cefdce;
+
+		&.error {
+			color: $error-color;
+		}
+	}
 
 	fieldset {
 		border-radius: 8px;
@@ -86,11 +140,11 @@
 	}
 
 	label.error {
-		color: #c00;
+		color: $error-color;
 
 		input {
-			border-bottom: 1px solid #c00;
-			color: #c00;
+			border-bottom: 1px solid $error-color;
+			color: $error-color;
 		}
 	}
 
