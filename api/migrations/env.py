@@ -11,6 +11,10 @@ config = context.config
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
 
+import sys, os
+
+sys.path.append('.')
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
@@ -36,8 +40,6 @@ def run_migrations_offline():
     script output.
 
     """
-	# TODO: use the engine from the __init__.py
-
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url, target_metadata=target_metadata, literal_binds=True)
