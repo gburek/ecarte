@@ -23,8 +23,10 @@ window.App = new Vue({
 			// That should be coming from a config
 			baseURL: `http://localhost:8000`,
 		})
-		// Let everyone know that an ajax call has ended
-		// so they can for instance hide throbbers
+		Vue.$http.interceptors.request.use(function(config) {
+			Vue.$eventBus.$emit(Ecarte.AJAX_START)
+			return config
+		})
 		Vue.$http.interceptors.response.use(
 			function(response) {
 				Vue.$eventBus.$emit(Ecarte.AJAX_END)

@@ -22,6 +22,7 @@
 			<div>
 				<!-- TODO: create a button with throbber component -->
 				<button class="waves-effect waves-light btn" @click="update">Update</button>
+				<throbber></throbber>
 			</div>
 		</fieldset>
 	</div>
@@ -30,9 +31,14 @@
 <script>
 	import Vue from 'vue'
 	import * as Ecarte from '../App.vue'
+	import throbber from './Throbber.vue'
 
 	export default {
 		name: 'AccountAdmin',
+
+		components: {
+			throbber,
+		},
 
 		mounted() {
 			this.userObj = App.userObj || {}
@@ -50,8 +56,6 @@
 
 		methods: {
 			update() {
-				//console.log(`PATCH /api/account/${this.userObj.id}`)
-				this.topMessage = ''
 				Vue.$http.patch(
 					`/api/account/${this.userObj.id}`,
 					{ 
